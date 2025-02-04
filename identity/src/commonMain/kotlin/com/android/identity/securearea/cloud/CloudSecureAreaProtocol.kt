@@ -5,8 +5,10 @@ import com.android.identity.cose.CoseKey
 import com.android.identity.crypto.X509CertChain
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcSignature
+import com.android.identity.device.DeviceCheck
+import com.android.identity.device.DeviceAssertion
+import com.android.identity.device.DeviceAttestation
 import com.android.identity.securearea.KeyPurpose
-import com.android.identity.securearea.cloud.CloudSecureAreaProtocol.RegisterRequest1
 
 /**
  * This describes the protocol (messages and constants) between the device and the server
@@ -116,12 +118,6 @@ object CloudSecureAreaProtocol {
      * This is the first message in the Registration flow and it's sent by
      * the device to the server the first time the device wishes to communicate
      * with the server.
-     * ```
-     * RegisterRequest0 = {
-     *   "type" : "RegisterRequest0",
-     *   "clientVersion" : tstr,
-     * }
-     * ```
      *
      * @param clientVersion The version of the protocol the client is using. Must be set to "1.0"
      */
@@ -130,16 +126,13 @@ object CloudSecureAreaProtocol {
     ) : Command()
 
     /**
-     * This is sent in response to [RegisterRequest0]:
-     * ```
-     * RegisterResponse0 = {
-     *   "type" : "RegisterResponse0",
-     *   "cloudChallenge" : bstr,
-     *   "serverState" : bstr
-     * }
-     * ```
-     * The server generates `cloudChallenge` and stores it in session state. The
-     * `serverState` parameter can be used by the server to store encrypted serialized
+     * Message sent by the server to the device sent in response to [RegisterRequest0]:
+     *
+     * The server generates [cloudChallenge] and stores it in session state. The server
+     * also sends [deviceCheckClientId] which the client shall use with the [DeviceCheck]
+     * API.
+     *
+     * The `serverState` parameter can be used by the server to store encrypted serialized
      * state or an identifier of the session.
      *
      * Upon receiving the message, the device shall create `DeviceBindingKey` - an ECC
@@ -148,20 +141,17 @@ object CloudSecureAreaProtocol {
      * a [RegisterResponse0] message.
      */
     data class RegisterResponse0(
+        val deviceCheckClientId: String,
         val cloudChallenge: ByteArray,
         val serverState: ByteArray
     ) : Command()
 
     /**
-     * This is sent in response to [RegisterResponse0]:
-     * ```
-     * RegisterRequest1 = {
-     *   "type" : "RegisterRequest1",
-     *   "deviceChallenge" : bstr,
-     *   "deviceBindingKeyAttestation": X509CertChain,
-     *   "serverState": bstr,
-     * }
-     * ```
+     * Message sent by the client to the server in response to [RegisterResponse0]:
+     *
+     * The device uses the [DeviceCheck] API to generate a [DeviceAttestation] and
+     * [DeviceAssertion] for the `cloudChallenge` nonce received.
+     *
      * The device includes `deviceBindingKeyAttestation` (which is a list of encoded
      * X509 certificates) and `serverState` described in [RegisterRequest0]. The device
      * also generates `deviceChallenge` which is to be included in this message and also
@@ -184,19 +174,16 @@ object CloudSecureAreaProtocol {
      */
     data class RegisterRequest1(
         val deviceChallenge: ByteArray,
-        val deviceBindingKeyAttestation: X509CertChain,
+        val deviceAttestation: DeviceAttestation,
+        val deviceAssertion: DeviceAssertion,
+        val deviceBindingKey: CoseKey,
+        val deviceBindingKeyAttestation: X509CertChain?,
         val serverState: ByteArray
     ) : Command()
 
     /**
-     * This is sent in response to [RegisterRequest1]:
-     * ```
-     * RegisterResponse1 = {
-     *   "type" : "RegisterResponse1",
-     *   "cloudBindingKeyAttestation" : X509CertChain
-     *   "serverState" : bstr
-     * }
-     * ```
+     * Message sent by the server to the device in response to [RegisterRequest1]:
+     *
      * The server includes `cloudBindingKeyAttestation` (which is a list of encoded
      * X509 certificates) and `serverState` described in [RegisterRequest1].
      *
@@ -297,6 +284,7 @@ object CloudSecureAreaProtocol {
         val eDeviceKey: CoseKey,
         val deviceNonce: ByteArray,
         val signature: EcSignature,
+        val deviceAssertion: DeviceAssertion,
         val serverState: ByteArray
     ) : Command()
 
@@ -376,6 +364,8 @@ object CloudSecureAreaProtocol {
         val validFromMillis: Long,
         val validUntilMillis: Long,
         val passphraseRequired: Boolean,
+        val userAuthenticationRequired: Boolean,
+        val userAuthenticationTypes: Long,
         val challenge: ByteArray
     ) : Command()
 
@@ -385,7 +375,8 @@ object CloudSecureAreaProtocol {
     ) : Command()
 
     data class CreateKeyRequest1(
-        val localKeyAttestation: X509CertChain,
+        val localKey: CoseKey,
+        val localKeyAttestation: X509CertChain?,
         val serverState: ByteArray
     ) : Command()
 

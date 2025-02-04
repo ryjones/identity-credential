@@ -3,6 +3,8 @@ package com.android.identity.appsupport.ui.certificateviewer
 import com.android.identity.asn1.ASN1
 import com.android.identity.asn1.ASN1Sequence
 import com.android.identity.asn1.OID
+import com.android.identity.cbor.Cbor
+import com.android.identity.cbor.DiagnosticOption
 import com.android.identity.crypto.X509Cert
 import com.android.identity.util.AndroidAttestationExtensionParser
 import com.android.identity.util.unsignedBigIntToString
@@ -113,6 +115,9 @@ internal data class CertificateViewData(
 
                         OID.X509_EXTENSION_ANDROID_KEYSTORE_ATTESTATION.oid ->
                             AndroidAttestationExtensionParser(cert).prettyPrint()
+
+                        OID.X509_EXTENSION_MULTIPAZ_CSA_KEY_ATTESTATION.oid ->
+                            Cbor.toDiagnostics(ext.data.toByteArray(), setOf(DiagnosticOption.PRETTY_PRINT))
 
                         else -> {
                             try {

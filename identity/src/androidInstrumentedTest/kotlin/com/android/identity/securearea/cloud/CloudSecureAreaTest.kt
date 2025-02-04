@@ -1,38 +1,28 @@
-package com.android.identity.android.securearea.cloud
+package com.android.identity.securearea.cloud
 
-import android.content.Context
 import android.content.pm.PackageManager
-import androidx.test.InstrumentationRegistry
+import androidx.test.platform.app.InstrumentationRegistry
 import com.android.identity.asn1.ASN1Integer
+import com.android.identity.asn1.OID
 import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.X509CertChain
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.X500Name
 import com.android.identity.crypto.X509Cert
+import com.android.identity.crypto.X509CertChain
 import com.android.identity.crypto.X509KeyUsage
-import com.android.identity.crypto.javaX509Certificate
-import com.android.identity.securearea.AttestationExtension
 import com.android.identity.securearea.CreateKeySettings
-import com.android.identity.securearea.KeyAttestation
 import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.PassphraseConstraints
-import com.android.identity.securearea.cloud.CloudSecureAreaProtocol
-import com.android.identity.securearea.cloud.CloudSecureAreaServer
-import com.android.identity.securearea.cloud.SimplePassphraseFailureEnforcer
-import com.android.identity.securearea.cloud.fromCbor
-import com.android.identity.securearea.cloud.toCbor
-import com.android.identity.storage.EphemeralStorageEngine
-import com.android.identity.storage.StorageEngine
 import com.android.identity.storage.StorageTable
 import com.android.identity.storage.StorageTableSpec
 import com.android.identity.storage.ephemeral.EphemeralStorage
+import com.android.identity.util.AndroidContexts
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import org.bouncycastle.asn1.ASN1InputStream
-import org.bouncycastle.asn1.ASN1OctetString
+import kotlinx.io.bytestring.ByteString
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.junit.Assert
 import org.junit.Before
@@ -54,15 +44,16 @@ class CloudSecureAreaTest {
         // based implementation included in Android.
         Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME)
         Security.addProvider(BouncyCastleProvider())
+        AndroidContexts.setApplicationContext(InstrumentationRegistry.getInstrumentation().context)
     }
 
     var serverTime = Instant.fromEpochMilliseconds(0)
 
     internal inner class LoopbackCloudSecureArea(
-        private val context: Context,
         storageTable: StorageTable,
         private val packageToAllow: String?,
     ) : CloudSecureArea(storageTable, "CloudSecureArea", "uri-not-used") {
+        val context = AndroidContexts.applicationContext
         private lateinit var server: CloudSecureAreaServer
 
         public override suspend fun initialize() {
@@ -142,8 +133,10 @@ class CloudSecureAreaTest {
                 cloudBindingKeyAttestationCertificates,
                 10 * 60,
                 false,
+                null,
                 false,
-                digestOfSignatures,
+                false,
+                digestOfSignatures.map { it -> ByteString(it) },
                 SimplePassphraseFailureEnforcer(
                     lockoutNumFailedAttempts = 3,
                     lockoutDuration = 1.minutes,
@@ -165,10 +158,94 @@ class CloudSecureAreaTest {
     }
 
     @Test
+    fun testAttestationCorrectness() = runTest {
+        val csa = LoopbackCloudSecureArea(EphemeralStorage().getTable(tableSpec), null)
+        csa.initialize()
+        csa.register("", PassphraseConstraints.NONE) { true }
+
+        val challenge = byteArrayOf(1, 2, 3)
+        val tests = mapOf<CloudCreateKeySettings, CloudSecureAreaAttestationExtension>(
+            CloudCreateKeySettings.Builder(challenge)
+                .build() to
+                    CloudSecureAreaAttestationExtension(
+                        challenge = ByteString(challenge),
+                        passphraseRequired = false,
+                        userAuthenticationRequired = false,
+                        userAuthenticationTypes = setOf()
+                    ),
+
+            CloudCreateKeySettings.Builder(challenge)
+                .setPassphraseRequired(true)
+                .build() to
+                    CloudSecureAreaAttestationExtension(
+                        challenge = ByteString(challenge),
+                        passphraseRequired = true,
+                        userAuthenticationRequired = false,
+                        userAuthenticationTypes = setOf()
+                    ),
+
+            CloudCreateKeySettings.Builder(challenge)
+                .setUserAuthenticationRequired(true, setOf(CloudSecureAreaUserAuthType.KNOWLEDGE_FACTOR))
+                .build() to
+                    CloudSecureAreaAttestationExtension(
+                        challenge = ByteString(challenge),
+                        passphraseRequired = false,
+                        userAuthenticationRequired = true,
+                        userAuthenticationTypes = setOf(CloudSecureAreaUserAuthType.KNOWLEDGE_FACTOR)
+                    ),
+
+            CloudCreateKeySettings.Builder(challenge)
+                .setUserAuthenticationRequired(true, setOf(CloudSecureAreaUserAuthType.BIOMETRIC))
+                .build() to
+                    CloudSecureAreaAttestationExtension(
+                        challenge = ByteString(challenge),
+                        passphraseRequired = false,
+                        userAuthenticationRequired = true,
+                        userAuthenticationTypes = setOf(CloudSecureAreaUserAuthType.BIOMETRIC)
+                    ),
+
+            CloudCreateKeySettings.Builder(challenge)
+                .setUserAuthenticationRequired(true, setOf(
+                    CloudSecureAreaUserAuthType.BIOMETRIC, CloudSecureAreaUserAuthType.KNOWLEDGE_FACTOR
+                ))
+                .build() to
+                    CloudSecureAreaAttestationExtension(
+                        challenge = ByteString(challenge),
+                        passphraseRequired = false,
+                        userAuthenticationRequired = true,
+                        userAuthenticationTypes = setOf(
+                            CloudSecureAreaUserAuthType.BIOMETRIC, CloudSecureAreaUserAuthType.KNOWLEDGE_FACTOR
+                        )
+                    ),
+
+            CloudCreateKeySettings.Builder(challenge)
+                .setPassphraseRequired(true)
+                .setUserAuthenticationRequired(true, setOf(
+                    CloudSecureAreaUserAuthType.BIOMETRIC, CloudSecureAreaUserAuthType.KNOWLEDGE_FACTOR
+                ))
+                .build() to
+                    CloudSecureAreaAttestationExtension(
+                        challenge = ByteString(challenge),
+                        passphraseRequired = true,
+                        userAuthenticationRequired = true,
+                        userAuthenticationTypes = setOf(
+                            CloudSecureAreaUserAuthType.BIOMETRIC, CloudSecureAreaUserAuthType.KNOWLEDGE_FACTOR
+                        )
+                    ),
+        )
+        for ((settings, expectedAttestation) in tests) {
+            val keyInfo = csa.createKey("test", settings)
+            val attestation = CloudSecureAreaAttestationExtension.decode(ByteString(
+                keyInfo.attestation.certChain!!.certificates[0]
+                    .getExtensionValue(OID.X509_EXTENSION_MULTIPAZ_CSA_KEY_ATTESTATION.oid)!!
+            ))
+            Assert.assertEquals(expectedAttestation, attestation)
+        }
+    }
+
+    @Test
     fun testKeyCreation() = runTest {
-        val context = InstrumentationRegistry.getTargetContext()
         val csa = LoopbackCloudSecureArea(
-            context,
             EphemeralStorage().getTable(tableSpec),
             null
         )
@@ -180,18 +257,16 @@ class CloudSecureAreaTest {
         val settings = CloudCreateKeySettings.Builder(challenge).build()
         csa.createKey("test", settings)
 
-        // Check that the challenge is there.
-        Assert.assertArrayEquals(
-            challenge,
-            getAttestationChallenge(csa.getKeyInfo("test").attestation)
-        )
+        val attestation = CloudSecureAreaAttestationExtension.decode(ByteString(
+            csa.getKeyInfo("test").attestation.certChain!!.certificates[0]
+                .getExtensionValue(OID.X509_EXTENSION_MULTIPAZ_CSA_KEY_ATTESTATION.oid)!!
+        ))
+        Assert.assertEquals(ByteString(challenge), attestation.challenge)
     }
 
     @Test
     fun testKeySigning() = runTest {
-        val context = InstrumentationRegistry.getTargetContext()
         val csa = LoopbackCloudSecureArea(
-            context,
             EphemeralStorage().getTable(tableSpec),
             null
         )
@@ -206,7 +281,6 @@ class CloudSecureAreaTest {
         Assert.assertTrue(keyInfo.attestation.certChain!!.certificates.size >= 1)
         Assert.assertEquals(setOf(KeyPurpose.SIGN), keyInfo.keyPurposes)
         Assert.assertFalse(keyInfo.isUserAuthenticationRequired)
-        Assert.assertEquals(0, keyInfo.userAuthenticationTimeoutMillis)
         Assert.assertEquals(setOf<Any>(), keyInfo.userAuthenticationTypes)
         Assert.assertNull(keyInfo.validFrom)
         Assert.assertNull(keyInfo.validUntil)
@@ -225,9 +299,7 @@ class CloudSecureAreaTest {
 
     @Test
     fun testKeyAgreement() = runTest {
-        val context = InstrumentationRegistry.getTargetContext()
         val csa = LoopbackCloudSecureArea(
-            context,
             EphemeralStorage().getTable(tableSpec),
             null
         )
@@ -245,7 +317,6 @@ class CloudSecureAreaTest {
         Assert.assertTrue(keyInfo.attestation.certChain!!.certificates.size >= 1)
         Assert.assertEquals(setOf(KeyPurpose.AGREE_KEY), keyInfo.keyPurposes)
         Assert.assertFalse(keyInfo.isUserAuthenticationRequired)
-        Assert.assertEquals(0, keyInfo.userAuthenticationTimeoutMillis)
         Assert.assertEquals(setOf<Any>(), keyInfo.userAuthenticationTypes)
         Assert.assertNull(keyInfo.validFrom)
         Assert.assertNull(keyInfo.validUntil)
@@ -266,9 +337,7 @@ class CloudSecureAreaTest {
 
     @Test
     fun testPassphraseCannotBeChanged() = runTest {
-        val context = InstrumentationRegistry.getTargetContext()
         val csa = LoopbackCloudSecureArea(
-            context,
             EphemeralStorage().getTable(tableSpec),
             null
         )
@@ -295,13 +364,10 @@ class CloudSecureAreaTest {
 
     @Test
     fun testServerChecksAttestationForApplication() = runTest {
-        val context = InstrumentationRegistry.getTargetContext()
-
         // Setup the server to only accept our package name. This should cause register to succeed().
         val csa = LoopbackCloudSecureArea(
-            context,
             EphemeralStorage().getTable(tableSpec),
-            context.packageName
+            AndroidContexts.applicationContext.packageName
         )
         csa.initialize()
         csa.register(
@@ -311,13 +377,10 @@ class CloudSecureAreaTest {
 
     @Test
     fun testServerChecksAttestationForApplicationNegative() = runTest {
-        val context = InstrumentationRegistry.getTargetContext()
-
         // Setup the server to only accept something which isn't our package name but still
         // exists on the system. We use com.android.externalstorage for that. This should
         // cause register() to fail.
         val csa = LoopbackCloudSecureArea(
-            context,
             EphemeralStorage().getTable(tableSpec),
             "com.android.externalstorage"
         )
@@ -336,9 +399,7 @@ class CloudSecureAreaTest {
     @Test
     @Throws(IOException::class)
     fun testUsingGenericCreateKeySettings() = runTest {
-        val context = InstrumentationRegistry.getTargetContext()
         val csa = LoopbackCloudSecureArea(
-            context,
             EphemeralStorage().getTable(tableSpec),
             null
         )
@@ -355,10 +416,11 @@ class CloudSecureAreaTest {
         Assert.assertEquals(setOf(KeyPurpose.SIGN), keyInfo.keyPurposes)
 
         // Check that the challenge is empty.
-        Assert.assertArrayEquals(
-            byteArrayOf(),
-            getAttestationChallenge(csa.getKeyInfo("testKey").attestation)
-        )
+        val attestation = CloudSecureAreaAttestationExtension.decode(ByteString(
+            csa.getKeyInfo("testKey").attestation.certChain!!.certificates[0]
+                .getExtensionValue(OID.X509_EXTENSION_MULTIPAZ_CSA_KEY_ATTESTATION.oid)!!
+        ))
+        Assert.assertEquals(ByteString(byteArrayOf()), attestation.challenge)
 
         // Now delete it...
         csa.deleteKey("testKey")
@@ -387,9 +449,7 @@ class CloudSecureAreaTest {
                  csa: CloudSecureArea,
                  unlockData: CloudKeyUnlockData?) -> Unit
     ) {
-        val context = InstrumentationRegistry.getTargetContext()
         val csa = LoopbackCloudSecureArea(
-            context,
             EphemeralStorage().getTable(tableSpec),
             null
         )
@@ -502,7 +562,6 @@ class CloudSecureAreaTest {
         // Finally, we want to check that different clients don't affect each other. To this
         // end we're creating a new client w/ a passphrase protected key.
         val csa2 = LoopbackCloudSecureArea(
-            context,
             EphemeralStorage().getTable(tableSpec),
             null
         )
@@ -539,18 +598,6 @@ class CloudSecureAreaTest {
     }
 
     companion object {
-        fun getAttestationChallenge(attestation: KeyAttestation): ByteArray {
-            val x509cert = attestation.certChain!!.certificates[0].javaX509Certificate
-            val octetString = x509cert.getExtensionValue(AttestationExtension.ATTESTATION_OID)
-            return try {
-                val asn1InputStream = ASN1InputStream(octetString)
-                val encodedCbor = (asn1InputStream.readObject() as ASN1OctetString).octets
-                AttestationExtension.decode(encodedCbor)
-            } catch (e: IOException) {
-                throw RuntimeException(e)
-            }
-        }
-
         private suspend fun assertThrows(clazz: KClass<out Throwable>, body: suspend () -> Unit) {
             try {
                 body()

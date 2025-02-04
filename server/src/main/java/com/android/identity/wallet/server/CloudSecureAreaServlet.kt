@@ -31,6 +31,7 @@ import kotlinx.datetime.plus
 import kotlinx.io.bytestring.ByteString
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.security.Security
+import kotlin.Boolean
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 
@@ -181,24 +182,24 @@ class CloudSecureAreaServlet : BaseHttpServlet() {
 
         private fun createCloudSecureArea(serverEnvironment: FlowEnvironment): CloudSecureAreaServer {
             Security.addProvider(BouncyCastleProvider())
-
             val settings = WalletServerSettings(serverEnvironment.getInterface(Configuration::class)!!)
-
             return CloudSecureAreaServer(
-                keyMaterial.serverSecureAreaBoundKey,
-                keyMaterial.attestationKey,
-                keyMaterial.attestationKeySignatureAlgorithm,
-                keyMaterial.attestationKeyIssuer,
-                keyMaterial.attestationKeyCertificates,
-                keyMaterial.cloudBindingKey,
-                keyMaterial.cloudBindingKeySignatureAlgorithm,
-                keyMaterial.cloudBindingKeyIssuer,
-                keyMaterial.cloudBindingKeyCertificates,
-                settings.cloudSecureAreaRekeyingIntervalSeconds,
-                settings.androidRequireGmsAttestation,
-                settings.androidRequireVerifiedBootGreen,
-                settings.androidRequireAppSignatureCertificateDigests.map { it.toByteArray() },
-                SimplePassphraseFailureEnforcer(
+                serverSecureAreaBoundKey = keyMaterial.serverSecureAreaBoundKey,
+                attestationKey = keyMaterial.attestationKey,
+                attestationKeySignatureAlgorithm = keyMaterial.attestationKeySignatureAlgorithm,
+                attestationKeyIssuer = keyMaterial.attestationKeyIssuer,
+                attestationKeyCertification = keyMaterial.attestationKeyCertificates,
+                cloudRootAttestationKey = keyMaterial.cloudBindingKey,
+                cloudRootAttestationKeySignatureAlgorithm = keyMaterial.cloudBindingKeySignatureAlgorithm,
+                cloudRootAttestationKeyIssuer = keyMaterial.cloudBindingKeyIssuer,
+                cloudRootAttestationKeyCertification = keyMaterial.cloudBindingKeyCertificates,
+                e2eeKeyLimitSeconds = settings.cloudSecureAreaRekeyingIntervalSeconds,
+                iosReleaseBuild = settings.iosReleaseBuild,
+                iosAppIdentifier = settings.iosAppIdentifier,
+                androidGmsAttestation = settings.androidRequireGmsAttestation,
+                androidVerifiedBootGreen = settings.androidRequireVerifiedBootGreen,
+                androidAppSignatureCertificateDigests = settings.androidRequireAppSignatureCertificateDigests,
+                passphraseFailureEnforcer = SimplePassphraseFailureEnforcer(
                     settings.cloudSecureAreaLockoutNumFailedAttempts,
                     settings.cloudSecureAreaLockoutDurationSeconds.seconds
                 )
