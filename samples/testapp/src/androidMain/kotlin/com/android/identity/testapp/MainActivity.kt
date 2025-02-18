@@ -11,6 +11,7 @@ import com.android.identity.util.AndroidContexts
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import org.multipaz.compose.notifications.NotificationManagerAndroid
 
 class MainActivity : FragmentActivity() {
 
