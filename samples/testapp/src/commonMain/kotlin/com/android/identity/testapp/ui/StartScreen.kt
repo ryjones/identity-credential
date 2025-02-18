@@ -23,10 +23,12 @@ import identitycredential.samples.testapp.generated.resources.iso_mdoc_multi_dev
 import identitycredential.samples.testapp.generated.resources.iso_mdoc_proximity_reading_title
 import identitycredential.samples.testapp.generated.resources.iso_mdoc_proximity_sharing_title
 import identitycredential.samples.testapp.generated.resources.nfc_screen_title
+import identitycredential.samples.testapp.generated.resources.notifications_title
 import identitycredential.samples.testapp.generated.resources.passphrase_prompt_screen_title
 import identitycredential.samples.testapp.generated.resources.provisioning_test_title
 import identitycredential.samples.testapp.generated.resources.qr_codes_screen_title
 import identitycredential.samples.testapp.generated.resources.rich_text_title
+import identitycredential.samples.testapp.generated.resources.screen_lock_title
 import identitycredential.samples.testapp.generated.resources.secure_enclave_secure_area_screen_title
 import identitycredential.samples.testapp.generated.resources.software_secure_area_screen_title
 import org.jetbrains.compose.resources.stringResource
@@ -48,7 +50,9 @@ fun StartScreen(
     onClickIsoMdocProximityReading: () -> Unit = {},
     onClickMdocTransportMultiDeviceTesting: () -> Unit = {},
     onClickCertificatesViewerExamples: () -> Unit = {},
-    onClickRichText: () -> Unit = {}
+    onClickRichText: () -> Unit = {},
+    onClickNotifications: () -> Unit = {},
+    onClickScreenLock: () -> Unit = {},
 ) {
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -153,6 +157,18 @@ fun StartScreen(
             item {
                 TextButton(onClick = onClickRichText) {
                     Text(stringResource(Res.string.rich_text_title))
+                }
+            }
+
+            item {
+                TextButton(onClick = onClickNotifications) {
+                    Text(stringResource(Res.string.notifications_title))
+                }
+            }
+
+            item {
+                TextButton(onClick = onClickScreenLock) {
+                    Text(stringResource(Res.string.screen_lock_title))
                 }
             }
         }
