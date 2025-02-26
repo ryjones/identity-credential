@@ -1,4 +1,4 @@
-package com.android.identity.testapp.ui
+package org.multipaz.testapp.ui
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,10 +20,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.android.identity.testapp.App
-import com.android.identity.testapp.Platform
-import com.android.identity.testapp.TestAppSettingsModel
-import com.android.identity.testapp.platform
+import org.multipaz.testapp.App
+import org.multipaz.testapp.Platform
+import org.multipaz.testapp.TestAppSettingsModel
+import org.multipaz.testapp.platform
 
 @Composable
 fun SettingsScreen(

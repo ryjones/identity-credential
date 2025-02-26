@@ -1,4 +1,4 @@
-package com.android.identity.testapp
+package org.multipaz.testapp
 
 import androidx.compose.ui.window.ComposeUIViewController
 
