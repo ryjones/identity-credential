@@ -1,15 +1,15 @@
-package com.android.identity.testapp
+package org.multipaz.testapp
 
-import com.android.identity.appsupport.ui.presentment.PresentmentSource
-import com.android.identity.credential.Credential
-import com.android.identity.document.Document
-import com.android.identity.documenttype.DocumentTypeRepository
-import com.android.identity.mdoc.credential.MdocCredential
-import com.android.identity.request.MdocRequest
-import com.android.identity.request.Request
-import com.android.identity.request.VcRequest
-import com.android.identity.sdjwt.credential.SdJwtVcCredential
-import com.android.identity.trustmanagement.TrustPoint
+import org.multipaz.appsupport.ui.presentment.PresentmentSource
+import org.multipaz.credential.Credential
+import org.multipaz.document.Document
+import org.multipaz.documenttype.DocumentTypeRepository
+import org.multipaz.mdoc.credential.MdocCredential
+import org.multipaz.request.MdocRequest
+import org.multipaz.request.Request
+import org.multipaz.request.VcRequest
+import org.multipaz.sdjwt.credential.SdJwtVcCredential
+import org.multipaz.trustmanagement.TrustPoint
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 

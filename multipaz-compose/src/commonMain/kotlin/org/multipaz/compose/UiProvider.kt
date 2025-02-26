@@ -10,9 +10,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.android.identity.securearea.PassphraseConstraints
-import com.android.identity.ui.UiModel
-import com.android.identity.ui.UiView
+import org.multipaz.securearea.PassphraseConstraints
+import org.multipaz.ui.UiModel
+import org.multipaz.ui.UiView
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow

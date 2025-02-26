@@ -1,4 +1,4 @@
-package com.android.identity.testapp.ui
+package org.multipaz.testapp.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,15 +20,15 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import com.android.identity.cbor.Cbor
-import com.android.identity.credential.SecureAreaBoundCredential
-import com.android.identity.crypto.X509CertChain
-import com.android.identity.mdoc.credential.MdocCredential
-import com.android.identity.sdjwt.credential.KeyBoundSdJwtVcCredential
-import com.android.identity.sdjwt.credential.KeylessSdJwtVcCredential
-import com.android.identity.sdjwt.credential.SdJwtVcCredential
-import com.android.identity.testapp.DocumentModel
-import com.android.identity.util.toBase64Url
+import org.multipaz.cbor.Cbor
+import org.multipaz.credential.SecureAreaBoundCredential
+import org.multipaz.crypto.X509CertChain
+import org.multipaz.mdoc.credential.MdocCredential
+import org.multipaz.sdjwt.credential.KeyBoundSdJwtVcCredential
+import org.multipaz.sdjwt.credential.KeylessSdJwtVcCredential
+import org.multipaz.sdjwt.credential.SdJwtVcCredential
+import org.multipaz.testapp.DocumentModel
+import org.multipaz.util.toBase64Url
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDateTime

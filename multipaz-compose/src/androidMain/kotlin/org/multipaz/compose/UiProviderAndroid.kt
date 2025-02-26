@@ -10,11 +10,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
-import com.android.identity.securearea.UserAuthenticationType
-import com.android.identity.nfc.NfcTagReaderModalBottomSheet
-import com.android.identity.ui.ScanNfcTagDialogIcon
-import com.android.identity.ui.UiModelAndroid
-import com.android.identity.ui.UiViewAndroid
+import org.multipaz.securearea.UserAuthenticationType
+import org.multipaz.nfc.NfcTagReaderModalBottomSheet
+import org.multipaz.ui.ScanNfcTagDialogIcon
+import org.multipaz.ui.UiModelAndroid
+import org.multipaz.ui.UiViewAndroid
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.StateFlow

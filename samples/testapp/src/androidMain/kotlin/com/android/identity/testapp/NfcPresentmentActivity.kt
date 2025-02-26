@@ -1,4 +1,4 @@
-package com.android.identity.testapp
+package org.multipaz.testapp
 
 import android.os.Bundle
 import androidx.activity.compose.setContent
@@ -10,7 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
 import org.multipaz.compose.AppTheme
 import org.multipaz.compose.presentment.Presentment
-import com.android.identity.util.AndroidContexts
+import org.multipaz.util.AndroidContexts
 import identitycredential.samples.testapp.generated.resources.Res
 import identitycredential.samples.testapp.generated.resources.app_icon
 import identitycredential.samples.testapp.generated.resources.app_name
