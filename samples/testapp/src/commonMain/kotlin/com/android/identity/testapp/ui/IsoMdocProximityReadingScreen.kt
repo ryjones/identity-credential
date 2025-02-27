@@ -137,7 +137,7 @@ fun IsoMdocProximityReadingScreen(
     val dropdownExpanded = remember { mutableStateOf(false) }
     val selectedRequest = remember { mutableStateOf(availableRequests[0]) }
     val blePermissionState = rememberBluetoothPermissionState()
-    val coroutineScope = rememberCoroutineScope()
+    val coroutineScope = rememberCoroutineScope { app.promptModel }
     val readerShowQrScanner = remember { mutableStateOf(false) }
     val readerTransport = remember { mutableStateOf<MdocTransport?>(null) }
     val readerSessionEncryption = remember { mutableStateOf<SessionEncryption?>(null) }
@@ -571,35 +571,30 @@ private suspend fun doReaderFlow(
             MdocTransportOptions(bleUseL2CAP = bleUseL2CAP)
         )
         if (transport is NfcTransportMdocReader) {
-            if (scanNfcTag(
-                    message = "QR engagement with NFC Data Transfer. Move into NFC field of the mdoc",
-                    tagInteractionFunc = { tag, updateMessage ->
-                        transport.setTag(tag)
-                        doReaderFlowWithTransport(
-                            app = app,
-                            transport = transport,
-                            encodedDeviceEngagement = encodedDeviceEngagement,
-                            handover = handover,
-                            updateNfcDialogMessage = updateNfcDialogMessage,
-                            allowMultipleRequests = allowMultipleRequests,
-                            bleUseL2CAP = bleUseL2CAP,
-                            showToast = showToast,
-                            readerTransport = readerTransport,
-                            readerSessionEncryption = readerSessionEncryption,
-                            readerSessionTranscript = readerSessionTranscript,
-                            readerMostRecentDeviceResponse = readerMostRecentDeviceResponse,
-                            selectedRequest = selectedRequest,
-                            eDeviceKey = eDeviceKey,
-                            eReaderKey = eReaderKey,
-                        )
-                        true
-                    }
-                ) == true
-            ) {
-                return
-            } else {
-                throw IllegalStateException("Reading cancelled")
-            }
+            scanNfcTag(
+                message = "QR engagement with NFC Data Transfer. Move into NFC field of the mdoc",
+                tagInteractionFunc = { tag, _ ->
+                    transport.setTag(tag)
+                    doReaderFlowWithTransport(
+                        app = app,
+                        transport = transport,
+                        encodedDeviceEngagement = encodedDeviceEngagement,
+                        handover = handover,
+                        updateNfcDialogMessage = updateNfcDialogMessage,
+                        allowMultipleRequests = allowMultipleRequests,
+                        bleUseL2CAP = bleUseL2CAP,
+                        showToast = showToast,
+                        readerTransport = readerTransport,
+                        readerSessionEncryption = readerSessionEncryption,
+                        readerSessionTranscript = readerSessionTranscript,
+                        readerMostRecentDeviceResponse = readerMostRecentDeviceResponse,
+                        selectedRequest = selectedRequest,
+                        eDeviceKey = eDeviceKey,
+                        eReaderKey = eReaderKey,
+                    )
+                }
+            )
+            return
         } else {
             transport
         }

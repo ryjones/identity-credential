@@ -1,5 +1,6 @@
 package com.android.identity.nfc
 
+import com.android.identity.prompt.PromptCancelledException
 import com.android.identity.util.Logger
 import com.android.identity.util.toKotlinError
 import kotlinx.coroutines.CancellableContinuation
@@ -22,8 +23,6 @@ import kotlin.coroutines.resumeWithException
 
 private class NfcTagReader<T> {
 
-    private class DialogCanceledException : Throwable()
-
     companion object {
         private const val TAG = "NfcTagReader"
     }
@@ -38,7 +37,7 @@ private class NfcTagReader<T> {
         ) {
             if (didInvalidateWithError.domain == NFCErrorDomain &&
                 didInvalidateWithError.code == NFCReaderSessionInvalidationErrorUserCanceled) {
-                continuation?.resumeWithException(DialogCanceledException())
+                continuation?.resumeWithException(PromptCancelledException())
                 continuation = null
             } else {
                 continuation?.resumeWithException(didInvalidateWithError.toKotlinError())
@@ -101,8 +100,8 @@ private class NfcTagReader<T> {
         tagInteractionFunc: suspend (
             tag: NfcIsoTag,
             updateMessage: (message: String) -> Unit
-        ) -> T?
-    ): T? {
+        ) -> T
+    ): T {
         check(NFCTagReaderSession.readingAvailable) { "The device doesn't support NFC tag reading" }
 
         try {
@@ -114,8 +113,8 @@ private class NfcTagReader<T> {
             }
             session.invalidateSession()
             return ret
-        } catch (e: DialogCanceledException) {
-            return null
+        } catch (e: PromptCancelledException) {
+            throw e
         } catch (e: Throwable) {
             session.invalidateSessionWithErrorMessage(e.message!!)
             throw e
@@ -128,8 +127,8 @@ actual suspend fun<T> scanNfcTag(
     tagInteractionFunc: suspend (
         tag: NfcIsoTag,
         updateMessage: (message: String) -> Unit
-    ) -> T?
-): T? {
+    ) -> T
+): T {
     val reader = NfcTagReader<T>()
     return reader.beginSession(message, tagInteractionFunc)
 }

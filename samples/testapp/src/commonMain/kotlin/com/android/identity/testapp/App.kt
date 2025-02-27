@@ -45,6 +45,7 @@ import com.android.identity.documenttype.knowntypes.PhotoID
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.mdoc.vical.SignedVical
+import com.android.identity.prompt.PromptModel
 import com.android.identity.sdjwt.credential.KeyBoundSdJwtVcCredential
 import com.android.identity.sdjwt.credential.KeylessSdJwtVcCredential
 import com.android.identity.secure_area_test_app.ui.CloudSecureAreaScreen
@@ -101,14 +102,14 @@ import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.multipaz.compose.AppTheme
-import org.multipaz.compose.UiProvider
+import org.multipaz.compose.prompt.PromptDialogs
 
 /**
  * Application singleton.
  *
  * Use [App.Companion.getInstance] to get an instance.
  */
-class App private constructor() {
+class App private constructor(val promptModel: PromptModel) {
 
     lateinit var settingsModel: TestAppSettingsModel
 
@@ -133,6 +134,8 @@ class App private constructor() {
     lateinit var issuerTrustManager: TrustManager
 
     lateinit var readerTrustManager: TrustManager
+
+    private var _promptModel: PromptModel? = null
 
     private suspend fun init() {
         val initFuncs = listOf<Pair<suspend () -> Unit, String>>(
@@ -467,10 +470,10 @@ class App private constructor() {
         private var app: App? = null
         private val appLock = Mutex()
 
-        suspend fun getInstance(): App {
+        suspend fun getInstance(promptModel: PromptModel): App {
             appLock.withLock {
                 if (app == null) {
-                    app = App()
+                    app = App(promptModel)
                     app!!.init()
                 }
             }
@@ -480,11 +483,11 @@ class App private constructor() {
         // TODO: Only used in MainViewController.kt because of deadlocks when doing
         //       `val app = runBlocking { App.getInstance() }`. Investigate.
         //
-        fun getInstanceAndInitializeInBackground(): App {
+        fun getInstanceAndInitializeInBackground(promptModel: PromptModel): App {
             if (app != null) {
                 return app!!
             }
-            app = App()
+            app = App(promptModel)
             CoroutineScope(Dispatchers.IO).launch {
                 app!!.init()
             }
@@ -500,7 +503,7 @@ class App private constructor() {
 
     private lateinit var snackbarHostState: SnackbarHostState
 
-    private val presentmentModel = PresentmentModel()
+    private val presentmentModel = PresentmentModel().apply { setPromptModel(promptModel) }
 
     @Composable
     @Preview
@@ -528,7 +531,7 @@ class App private constructor() {
                 snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
             ) { innerPadding ->
 
-                UiProvider()
+                PromptDialogs(promptModel)
 
                 NavHost(
                     navController = navController,
@@ -639,10 +642,11 @@ class App private constructor() {
                         )
                     }
                     composable(route = SoftwareSecureAreaDestination.route) {
-                        SoftwareSecureAreaScreen(showToast = { message -> showToast(message) })
+                        SoftwareSecureAreaScreen(promptModel, showToast = { message -> showToast(message) })
                     }
                     composable(route = AndroidKeystoreSecureAreaDestination.route) {
                         AndroidKeystoreSecureAreaScreen(
+                            promptModel = promptModel,
                             showToast = { message -> showToast(message) },
                             onViewCertificate = { encodedCertificateData ->
                                 navController.navigate(CertificateViewerDestination.route + "/${encodedCertificateData}")
@@ -704,6 +708,7 @@ class App private constructor() {
                     }
                     composable(route = NfcDestination.route) {
                         NfcScreen(
+                            promptModel = promptModel,
                             showToast = { message -> showToast(message) }
                         )
                     }
@@ -711,6 +716,7 @@ class App private constructor() {
                         IsoMdocProximitySharingScreen(
                             presentmentModel = presentmentModel,
                             settingsModel = settingsModel,
+                            promptModel = promptModel,
                             onNavigateToPresentmentScreen = {
                                 navController.navigate(PresentmentDestination.route)
                             },

@@ -5,7 +5,7 @@ actual suspend fun<T> scanNfcTag(
     tagInteractionFunc: suspend (
         tag: NfcIsoTag,
         updateMessage: (message: String) -> Unit
-    ) -> T?,
-): T? {
+    ) -> T,
+): T {
     throw NotImplementedError("scanNfcTag is not available for JVM")
 }
